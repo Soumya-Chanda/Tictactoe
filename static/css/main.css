@@ -1,0 +1,94 @@
+/* TicTacMaster — Supplemental Static CSS */
+
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes spinIn {
+    from { transform: rotate(-90deg) scale(0); opacity: 0; }
+    to   { transform: rotate(0deg) scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+}
+
+.shimmer-text {
+    background: linear-gradient(
+        90deg,
+        var(--accent) 0%,
+        var(--accent3) 40%,
+        var(--accent) 80%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+}
+
+/* ── Tooltip ────────────────────────────────────────────── */
+[data-tip] {
+    position: relative;
+    cursor: default;
+}
+[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a26;
+    border: 1px solid #2a2a3d;
+    color: #e8e8f0;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 99;
+}
+[data-tip]:hover::after { opacity: 1; }
+
+/* ── Loading spinner ────────────────────────────────────── */
+.spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(124,106,247,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast notification ─────────────────────────────────── */
+#toast {
+    position: fixed;
+    bottom: 1.5rem; right: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.9rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 9999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+    max-width: 320px;
+}
+#toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+#toast.toast-win   { border-left: 3px solid var(--accent3); }
+#toast.toast-loss  { border-left: 3px solid var(--accent2); }
+#toast.toast-draw  { border-left: 3px solid var(--accent); }
+#toast.toast-info  { border-left: 3px solid var(--text-muted); }
+
+/* ── Print styles ───────────────────────────────────────── */
+@media print {
+    nav, .btn, #resignBtn { display: none !important; }
+    body { background: white; color: black; }
+    .card, .chart-card { border: 1px solid #ccc; }
+}

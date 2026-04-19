@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}{{ code }} — TicTacMaster{% endblock %}
+{% block body %}
+<div style="min-height:80vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:2rem;">
+    <div>
+        <div style="font-family:var(--font-display); font-size:6rem; font-weight:800; color:var(--accent); line-height:1; margin-bottom:1rem;">
+            {{ code }}
+        </div>
+        <div style="font-family:var(--font-display); font-size:1.5rem; font-weight:700; margin-bottom:0.5rem;">
+            {% if code == 404 %}Oops — Page Not Found{% else %}Something Went Wrong{% endif %}
+        </div>
+        <div style="color:var(--text-muted); margin-bottom:2rem; font-size:0.95rem;">{{ msg }}</div>
+        <a href="{{ url_for('home') if session.get('user_id') else url_for('login') }}" class="btn btn-primary">
+            ← Go Home
+        </a>
+    </div>
+</div>
+{% endblock %}

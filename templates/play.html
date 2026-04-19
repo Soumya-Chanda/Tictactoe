@@ -1,0 +1,530 @@
+{% extends 'base.html' %}
+{% block title %}Play — TicTacMaster{% endblock %}
+{% block head %}
+<style>
+.play-wrap {
+    max-width: 900px; margin: auto; padding: 2rem;
+}
+/* Mode selector */
+.mode-screen { animation: fadeIn 0.4s ease; }
+.mode-title {
+    font-family: var(--font-display);
+    font-size: 2rem; font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.5rem; }
+.mode-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+.mode-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 0 30px rgba(124,106,247,0.2);
+}
+.mode-card.selected {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.08);
+}
+.mode-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+.mode-name { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
+.mode-desc { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.3rem; }
+
+/* Difficulty */
+.diff-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
+.diff-btn {
+    flex: 1; padding: 0.6rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.diff-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124,106,247,0.1);
+}
+
+/* Board */
+.game-screen { display: none; animation: fadeIn 0.4s ease; }
+.game-screen.visible { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+.game-layout {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 2rem;
+    align-items: start;
+    margin-top: 1.5rem;
+}
+.player-panel { }
+.player-info {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+    transition: all 0.3s;
+}
+.player-info.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(124,106,247,0.2);
+}
+.player-symbol { font-family: var(--font-display); font-size: 2.5rem; font-weight: 800; }
+.player-name { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
+.player-turn-label { font-size: 0.75rem; color: var(--accent); margin-top: 0.3rem; display: none; }
+.player-info.active .player-turn-label { display: block; }
+
+/* Board grid */
+.board-wrap { position: relative; }
+.board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 280px;
+}
+.cell {
+    width: 85px; height: 85px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 2.2rem; font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+}
+.cell:hover:not(.taken) {
+    background: var(--surface2);
+    border-color: var(--accent);
+}
+.cell.taken { cursor: not-allowed; }
+.cell.X { color: var(--x-color); border-color: rgba(247,106,106,0.3); }
+.cell.O { color: var(--o-color); border-color: rgba(106,247,200,0.3); }
+.cell.winning {
+    background: rgba(247,198,106,0.12);
+    border-color: var(--gold);
+    animation: pulse 0.6s ease infinite alternate;
+}
+@keyframes pulse {
+    from { box-shadow: 0 0 10px rgba(247,198,106,0.3); }
+    to { box-shadow: 0 0 25px rgba(247,198,106,0.6); }
+}
+.cell-pop {
+    animation: cellPop 0.25s ease;
+}
+@keyframes cellPop {
+    0% { transform: scale(0.5); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Status */
+.status-bar {
+    text-align: center;
+    padding: 0.75rem;
+    border-radius: 10px;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    min-height: 46px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+/* Result overlay */
+.result-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+    backdrop-filter: blur(8px);
+    animation: fadeOverlay 0.3s ease;
+}
+@keyframes fadeOverlay { from { opacity:0; } to { opacity:1; } }
+.result-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    padding: 3rem 2.5rem;
+    text-align: center;
+    max-width: 380px; width: 90%;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    animation: resultPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes resultPop {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.result-emoji { font-size: 4rem; margin-bottom: 1rem; }
+.result-title { font-family: var(--font-display); font-size: 2rem; font-weight: 800; }
+.result-sub { color: var(--text-muted); margin: 0.5rem 0 1.5rem; }
+.result-actions { display: flex; gap: 0.75rem; justify-content: center; }
+
+@media (max-width: 700px) {
+    .game-layout { grid-template-columns: 1fr; justify-items: center; }
+    .player-panel { display: flex; gap: 1rem; }
+    .mode-cards { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+{% block body %}
+<div class="play-wrap">
+    <!-- Mode selection screen -->
+    <div id="modeScreen" class="mode-screen">
+        <div class="mode-title">Choose Game Mode</div>
+        <div class="text-muted" style="font-size:0.9rem;">Pick how you want to play, then hit Start.</div>
+
+        <div class="mode-cards">
+            <div class="mode-card" id="cardPvC" onclick="selectMode('pvc')">
+                <div class="mode-icon">🤖</div>
+                <div class="mode-name">vs Computer</div>
+                <div class="mode-desc">Challenge the AI at your chosen difficulty</div>
+            </div>
+            <div class="mode-card" id="cardPvP" onclick="selectMode('pvp')">
+                <div class="mode-icon">👥</div>
+                <div class="mode-name">2 Players</div>
+                <div class="mode-desc">Play against a friend on the same device</div>
+            </div>
+        </div>
+
+        <div id="diffSection" style="display:none; margin-top:1.5rem;">
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;">AI Difficulty</div>
+            <div class="diff-row">
+                <button class="diff-btn active" onclick="setDiff(this,'easy')">Easy</button>
+                <button class="diff-btn" onclick="setDiff(this,'medium')">Medium</button>
+                <button class="diff-btn" onclick="setDiff(this,'hard')">Hard</button>
+            </div>
+        </div>
+
+        <div style="margin-top:2rem; display:flex; gap:0.75rem;">
+            <button class="btn btn-primary" id="startBtn" onclick="startGame()" disabled>
+                ▶ Start Game
+            </button>
+            <a href="{{ url_for('home') }}" class="btn btn-secondary">← Back</a>
+        </div>
+    </div>
+
+    <!-- Game screen -->
+    <div id="gameScreen" class="game-screen">
+        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
+            <button class="btn btn-secondary" onclick="goBack()">← Modes</button>
+            <span id="gameModeLabel" class="text-muted" style="font-size:0.85rem;"></span>
+            <button class="btn btn-danger" id="resignBtn" onclick="resign()" style="margin-left:auto;">Resign</button>
+        </div>
+
+        <div id="statusBar" class="status-bar">Setting up game...</div>
+
+        <div class="game-layout">
+            <!-- Player 1 -->
+            <div class="player-panel">
+                <div id="panel1" class="player-info active">
+                    <div class="player-symbol text-x">✕</div>
+                    <div class="player-name" id="p1name">{{ session.username }}</div>
+                    <div class="player-turn-label">● Your turn</div>
+                </div>
+            </div>
+
+            <!-- Board -->
+            <div class="board-wrap">
+                <div class="board" id="board">
+                    {% for i in range(9) %}
+                    <div class="cell" id="cell{{ i }}" onclick="makeMove({{ i }})"></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Player 2 -->
+            <div class="player-panel">
+                <div id="panel2" class="player-info">
+                    <div class="player-symbol text-o">○</div>
+                    <div class="player-name" id="p2name">Computer</div>
+                    <div class="player-turn-label">● Your turn</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Move history -->
+        <div style="margin-top:1.5rem;">
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Move History</div>
+            <div id="moveHistory" style="display:flex; flex-wrap:wrap; gap:0.4rem;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Result overlay -->
+<div id="resultOverlay" class="result-overlay" style="display:none;">
+    <div class="result-card">
+        <div class="result-emoji" id="resultEmoji">🎉</div>
+        <div class="result-title" id="resultTitle">You Win!</div>
+        <div class="result-sub" id="resultSub">Excellent play!</div>
+        <div class="result-actions">
+            <button class="btn btn-primary" onclick="playAgain()">Play Again</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+let selectedMode = null;
+let selectedDiff = 'easy';
+let currentGameId = null;
+let gameActive = false;
+let currentTurn = 'X';
+let boardState = Array(9).fill(null);
+let moveCount = 0;
+let processingMove = false;
+
+function selectMode(mode) {
+    selectedMode = mode;
+    document.getElementById('cardPvC').classList.toggle('selected', mode === 'pvc');
+    document.getElementById('cardPvP').classList.toggle('selected', mode === 'pvp');
+    document.getElementById('diffSection').style.display = mode === 'pvc' ? 'block' : 'none';
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('p2name').textContent = mode === 'pvc' ? 'Computer 🤖' : 'Player 2';
+}
+
+function setDiff(btn, diff) {
+    selectedDiff = diff;
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+async function startGame() {
+    if (!selectedMode) return;
+    const res = await fetch('/api/game/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ mode: selectedMode, difficulty: selectedDiff })
+    });
+    const data = await res.json();
+    if (!data.success) return alert('Failed to start game');
+
+    currentGameId = data.game_id;
+    gameActive = true;
+    currentTurn = 'X';
+    boardState = Array(9).fill(null);
+    moveCount = 0;
+    processingMove = false;
+
+    document.getElementById('modeScreen').style.display = 'none';
+    const gs = document.getElementById('gameScreen');
+    gs.classList.add('visible');
+    gs.style.display = 'block';
+
+    document.getElementById('gameModeLabel').textContent =
+        selectedMode === 'pvc' ? `🤖 vs AI (${selectedDiff})` : '👥 2-Player Local';
+    document.getElementById('resignBtn').style.display = 'inline-flex';
+    document.getElementById('resultOverlay').style.display = 'none';
+
+    resetBoard();
+    updateStatus();
+    updateTurnPanels();
+}
+
+function resetBoard() {
+    for (let i = 0; i < 9; i++) {
+        const cell = document.getElementById(`cell${i}`);
+        cell.textContent = '';
+        cell.className = 'cell';
+    }
+    document.getElementById('moveHistory').innerHTML = '';
+}
+
+function updateStatus() {
+    const bar = document.getElementById('statusBar');
+    if (selectedMode === 'pvp') {
+        bar.textContent = `Player ${currentTurn === 'X' ? '1 (X)' : '2 (O)'}'s turn`;
+        bar.style.color = currentTurn === 'X' ? 'var(--x-color)' : 'var(--o-color)';
+    } else {
+        if (currentTurn === 'X') {
+            bar.textContent = '🎯 Your turn — click a cell';
+            bar.style.color = 'var(--x-color)';
+        } else {
+            bar.textContent = '🤖 Computer is thinking...';
+            bar.style.color = 'var(--o-color)';
+        }
+    }
+}
+
+function updateTurnPanels() {
+    document.getElementById('panel1').classList.toggle('active', currentTurn === 'X');
+    document.getElementById('panel2').classList.toggle('active', currentTurn === 'O');
+}
+
+async function makeMove(pos) {
+    if (!gameActive || processingMove) return;
+    if (boardState[pos] !== null) return;
+    if (selectedMode === 'pvc' && currentTurn !== 'X') return;
+
+    processingMove = true;
+
+    if (selectedMode === 'pvc') {
+        await makePvCMove(pos);
+    } else {
+        await makePvPMove(pos);
+    }
+
+    processingMove = false;
+}
+
+async function makePvCMove(pos) {
+    placeSymbol(pos, 'X');
+    boardState[pos] = 'X';
+    moveCount++;
+    addMoveHistory(pos, 'X', moveCount);
+    currentTurn = 'O';
+    updateTurnPanels();
+    updateStatus();
+
+    const res = await fetch(`/api/game/${currentGameId}/move`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ position: pos, symbol: 'X' })
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    boardState = data.board;
+
+    if (data.ai_move !== null && data.ai_move !== undefined) {
+        await sleep(350);
+        placeSymbol(data.ai_move, 'O');
+        moveCount++;
+        addMoveHistory(data.ai_move, 'O', moveCount);
+    }
+
+    if (data.game_over) {
+        if (data.result.combo) highlightWinning(data.result.combo);
+        await sleep(600);
+        showResult(data.result, data.outcome);
+        gameActive = false;
+    } else {
+        currentTurn = 'X';
+        updateTurnPanels();
+        updateStatus();
+    }
+}
+
+async function makePvPMove(pos) {
+    const symbol = currentTurn;
+    placeSymbol(pos, symbol);
+    boardState[pos] = symbol;
+    moveCount++;
+    addMoveHistory(pos, symbol, moveCount);
+
+    const res = await fetch(`/api/game/${currentGameId}/pvp_move`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ position: pos, symbol })
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    if (data.game_over) {
+        if (data.result.combo) highlightWinning(data.result.combo);
+        await sleep(500);
+        const outcome = data.result.is_draw ? 'draw' : (data.result.winner === 'X' ? 'p1win' : 'p2win');
+        showResult(data.result, outcome);
+        gameActive = false;
+    } else {
+        currentTurn = data.current_turn;
+        updateTurnPanels();
+        updateStatus();
+    }
+}
+
+function placeSymbol(pos, symbol) {
+    const cell = document.getElementById(`cell${pos}`);
+    cell.textContent = symbol === 'X' ? '✕' : '○';
+    cell.classList.add(symbol, 'taken', 'cell-pop');
+}
+
+function highlightWinning(combo) {
+    combo.forEach(i => document.getElementById(`cell${i}`).classList.add('winning'));
+}
+
+function addMoveHistory(pos, symbol, num) {
+    const mh = document.getElementById('moveHistory');
+    const el = document.createElement('span');
+    el.style.cssText = `
+        display:inline-flex; align-items:center; justify-content:center;
+        width:28px; height:28px; border-radius:6px; font-size:0.75rem; font-weight:600;
+        background: var(--surface2); border: 1px solid var(--border);
+        color: ${symbol === 'X' ? 'var(--x-color)' : 'var(--o-color)'};
+    `;
+    el.title = `Move ${num}: ${symbol} → cell ${pos}`;
+    el.textContent = `${symbol}${pos}`;
+    mh.appendChild(el);
+}
+
+function showResult(result, outcome) {
+    const overlay = document.getElementById('resultOverlay');
+    const emoji = document.getElementById('resultEmoji');
+    const title = document.getElementById('resultTitle');
+    const sub = document.getElementById('resultSub');
+
+    if (result.is_draw) {
+        emoji.textContent = '🤝'; title.textContent = "It's a Draw!";
+        sub.textContent = 'A perfectly balanced game.';
+        title.style.color = 'var(--accent)';
+    } else if (outcome === 'win') {
+        emoji.textContent = '🏆'; title.textContent = 'You Win!';
+        sub.textContent = 'Brilliant moves! 🎉';
+        title.style.color = 'var(--o-color)';
+    } else if (outcome === 'loss') {
+        emoji.textContent = '🤖'; title.textContent = 'AI Wins!';
+        sub.textContent = 'The machine claims victory.';
+        title.style.color = 'var(--x-color)';
+    } else if (outcome === 'p1win') {
+        emoji.textContent = '✕'; title.textContent = 'Player 1 Wins!';
+        sub.textContent = 'X takes the board!';
+        title.style.color = 'var(--x-color)';
+    } else {
+        emoji.textContent = '○'; title.textContent = 'Player 2 Wins!';
+        sub.textContent = 'O dominates!';
+        title.style.color = 'var(--o-color)';
+    }
+
+    overlay.style.display = 'flex';
+}
+
+async function resign() {
+    if (!gameActive || !currentGameId) return;
+    if (!confirm('Resign this game?')) return;
+    await fetch(`/api/game/${currentGameId}/resign`, { method: 'POST' });
+    gameActive = false;
+    document.getElementById('statusBar').textContent = '🏳 You resigned.';
+    document.getElementById('statusBar').style.color = 'var(--accent2)';
+}
+
+function playAgain() {
+    document.getElementById('resultOverlay').style.display = 'none';
+    startGame();
+}
+
+function goBack() {
+    if (gameActive && !confirm('Abandon current game?')) return;
+    if (gameActive && currentGameId) {
+        fetch(`/api/game/${currentGameId}/resign`, { method: 'POST' });
+    }
+    document.getElementById('gameScreen').style.display = 'none';
+    document.getElementById('gameScreen').classList.remove('visible');
+    document.getElementById('modeScreen').style.display = 'block';
+    gameActive = false;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+{% endblock %}

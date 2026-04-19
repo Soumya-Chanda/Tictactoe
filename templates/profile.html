@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% block title %}Profile — TicTacMaster{% endblock %}
+{% block head %}
+<style>
+.profile-wrap { max-width: 800px; margin: auto; padding: 2rem; }
+
+.profile-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    display: flex; gap: 2rem; align-items: center;
+    margin-bottom: 1.5rem;
+    position: relative; overflow: hidden;
+}
+.profile-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at top left, rgba(124,106,247,0.08), transparent 60%);
+    pointer-events: none;
+}
+.profile-big-avatar {
+    width: 90px; height: 90px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 2.2rem; font-weight: 800;
+    color: white; flex-shrink: 0;
+    border: 3px solid rgba(255,255,255,0.1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.profile-name {
+    font-family: var(--font-display);
+    font-size: 1.8rem; font-weight: 800; margin-bottom: 0.2rem;
+}
+.profile-joined { font-size: 0.82rem; color: var(--text-muted); }
+
+/* Color picker */
+.color-picker-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.75rem; }
+.color-swatch {
+    width: 28px; height: 28px; border-radius: 50%;
+    cursor: pointer; border: 2px solid transparent;
+    transition: all 0.15s;
+}
+.color-swatch:hover, .color-swatch.selected {
+    border-color: white;
+    transform: scale(1.15);
+}
+
+/* Achievement badges */
+.achievements { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; }
+.achievement {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.82rem;
+}
+.achievement.earned {
+    border-color: var(--gold);
+    background: rgba(247,198,106,0.07);
+}
+.achievement.earned .ach-icon { filter: none; }
+.ach-icon { font-size: 1.2rem; filter: grayscale(1) opacity(0.4); }
+.ach-name { font-weight: 600; }
+.ach-desc { color: var(--text-muted); font-size: 0.75rem; }
+
+.section-hdr {
+    font-size: 0.78rem; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.section-hdr::before {
+    content: ''; display: block;
+    width: 3px; height: 14px;
+    background: var(--accent); border-radius: 2px;
+}
+</style>
+{% endblock %}
+{% block body %}
+<div class="profile-wrap">
+
+    {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+    <!-- Profile hero -->
+    <div class="profile-hero">
+        <div class="profile-big-avatar" id="bigAvatar"
+             style="background:{{ user.avatar_color }}">
+            {{ user.username[0].upper() }}
+        </div>
+        <div>
+            <div class="profile-name">{{ user.username }}</div>
+            <div class="profile-joined">{{ user.email }}</div>
+            <div class="profile-joined" style="margin-top:0.25rem;">
+                Joined {{ user.created_at[:10] }}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2" style="gap:1.25rem; margin-bottom:1.25rem;">
+        <!-- Stat summary -->
+        <div class="card">
+            <div class="section-hdr">Career Stats</div>
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                {% set total = stats.total_games or 0 %}
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted" style="font-size:0.88rem;">Total Games</span>
+                    <span style="font-weight:700; font-family:var(--font-display);">{{ total }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted" style="font-size:0.88rem;">Wins</span>
+                    <span style="font-weight:700; color:var(--accent3);">{{ stats.wins or 0 }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted" style="font-size:0.88rem;">Losses</span>
+                    <span style="font-weight:700; color:var(--accent2);">{{ stats.losses or 0 }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted" style="font-size:0.88rem;">Draws</span>
+                    <span style="font-weight:700; color:var(--accent);">{{ stats.draws or 0 }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted" style="font-size:0.88rem;">Win Rate</span>
+                    <span style="font-weight:700;">{{ stats.win_rate or 0 }}%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted" style="font-size:0.88rem;">Best Streak</span>
+                    <span style="font-weight:700; color:var(--gold);">{{ stats.max_win_streak or 0 }} 🔥</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="text-muted" style="font-size:0.88rem;">Fastest Win</span>
+                    <span style="font-weight:700;">
+                        {% if stats.fastest_win_moves and stats.fastest_win_moves != 999 %}
+                            {{ stats.fastest_win_moves }} moves
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customize avatar color -->
+        <div class="card">
+            <div class="section-hdr">Customize Avatar</div>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                Choose your avatar color
+            </div>
+            <form method="POST" action="{{ url_for('profile') }}">
+                <input type="hidden" name="action" value="change_color">
+                <input type="hidden" name="color" id="colorInput" value="{{ user.avatar_color }}">
+                <div class="color-picker-row" id="colorPicker">
+                    {% set colors = ['#6c63ff','#f76a6a','#6af7c8','#fa8231','#00b8d9','#f7c86a','#ee0979','#43e97b','#f64f59','#12c2e9','#a18cd1','#ffecd2'] %}
+                    {% for c in colors %}
+                    <div class="color-swatch {% if c == user.avatar_color %}selected{% endif %}"
+                         style="background:{{ c }};"
+                         data-color="{{ c }}"
+                         onclick="pickColor(this, '{{ c }}')">
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:1.25rem;">
+                    Save Color
+                </button>
+            </form>
+
+            <div style="margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border);">
+                <div class="section-hdr">Change Password</div>
+                <form method="POST" action="{{ url_for('profile') }}" style="display:flex; flex-direction:column; gap:0.75rem;">
+                    <input type="hidden" name="action" value="change_password">
+                    <div class="input-group">
+                        <label>Current Password</label>
+                        <input type="password" name="current_password" required>
+                    </div>
+                    <div class="input-group">
+                        <label>New Password</label>
+                        <input type="password" name="new_password" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-secondary">Update Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="card">
+        <div class="section-hdr">Achievements</div>
+        <div class="achievements">
+            {% set w = stats.wins or 0 %}
+            {% set streak = stats.max_win_streak or 0 %}
+            {% set total = stats.total_games or 0 %}
+
+            <div class="achievement {% if w >= 1 %}earned{% endif %}">
+                <span class="ach-icon">🏆</span>
+                <div>
+                    <div class="ach-name">First Blood</div>
+                    <div class="ach-desc">Win your first game</div>
+                </div>
+            </div>
+
+            <div class="achievement {% if w >= 10 %}earned{% endif %}">
+                <span class="ach-icon">⚡</span>
+                <div>
+                    <div class="ach-name">Veteran</div>
+                    <div class="ach-desc">Win 10 games</div>
+                </div>
+            </div>
+
+            <div class="achievement {% if w >= 50 %}earned{% endif %}">
+                <span class="ach-icon">👑</span>
+                <div>
+                    <div class="ach-name">Grandmaster</div>
+                    <div class="ach-desc">Win 50 games</div>
+                </div>
+            </div>
+
+            <div class="achievement {% if streak >= 3 %}earned{% endif %}">
+                <span class="ach-icon">🔥</span>
+                <div>
+                    <div class="ach-name">On Fire</div>
+                    <div class="ach-desc">3-game win streak</div>
+                </div>
+            </div>
+
+            <div class="achievement {% if streak >= 5 %}earned{% endif %}">
+                <span class="ach-icon">💥</span>
+                <div>
+                    <div class="ach-name">Unstoppable</div>
+                    <div class="ach-desc">5-game win streak</div>
+                </div>
+            </div>
+
+            <div class="achievement {% if total >= 50 %}earned{% endif %}">
+                <span class="ach-icon">🎮</span>
+                <div>
+                    <div class="ach-name">Dedicated</div>
+                    <div class="ach-desc">Play 50 games total</div>
+                </div>
+            </div>
+
+            <div class="achievement {% if stats.pvc_wins and stats.pvc_wins >= 1 %}earned{% endif %}">
+                <span class="ach-icon">🤖</span>
+                <div>
+                    <div class="ach-name">Machine Slayer</div>
+                    <div class="ach-desc">Beat the AI</div>
+                </div>
+            </div>
+
+            <div class="achievement {% if stats.fastest_win_moves and stats.fastest_win_moves <= 5 %}earned{% endif %}">
+                <span class="ach-icon">💨</span>
+                <div>
+                    <div class="ach-name">Speedrunner</div>
+                    <div class="ach-desc">Win in 5 or fewer moves</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top:1.25rem; text-align:right;">
+        <a href="{{ url_for('home') }}" class="btn btn-secondary">← Back to Home</a>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+function pickColor(el, color) {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('colorInput').value = color;
+    document.getElementById('bigAvatar').style.background = color;
+}
+{% endblock %}

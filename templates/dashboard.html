@@ -1,0 +1,414 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — TicTacMaster{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+.dash-title {
+    font-family: var(--font-display);
+    font-size: 1.8rem; font-weight: 800;
+    margin-bottom: 0.3rem;
+}
+.section-hdr {
+    font-family: var(--font-display);
+    font-size: 1rem; font-weight: 700;
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem;
+}
+.section-hdr::before {
+    content: ''; display: block;
+    width: 3px; height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+/* Big stat cards */
+.big-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.big-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.big-stat::after {
+    content: attr(data-icon);
+    position: absolute; right: 1rem; bottom: 0.5rem;
+    font-size: 2.5rem; opacity: 0.1;
+}
+.big-stat .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.big-stat .value { font-family: var(--font-display); font-size: 2rem; font-weight: 800; margin-top: 0.2rem; }
+.big-stat .sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+/* Chart cards */
+.chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+}
+.chart-wrap { position: relative; }
+
+/* Heatmap */
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 6px;
+    max-width: 240px;
+    margin: auto;
+}
+.hm-cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 0.75rem; font-weight: 700;
+    position: relative;
+    transition: transform 0.2s;
+}
+.hm-cell:hover { transform: scale(1.05); }
+.hm-count { font-size: 1.1rem; }
+.hm-pos { font-size: 0.6rem; opacity: 0.6; }
+
+/* Leaderboard */
+.lb-row {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-rank {
+    font-family: var(--font-display);
+    font-size: 1rem; font-weight: 800;
+    width: 28px; text-align: center;
+    color: var(--text-muted);
+}
+.lb-rank.gold { color: var(--gold); }
+.lb-rank.silver { color: #aaa; }
+.lb-rank.bronze { color: #cd7f32; }
+.lb-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 0.85rem;
+    color: white; flex-shrink: 0;
+}
+.lb-name { flex: 1; font-size: 0.9rem; font-weight: 500; }
+.lb-stat { font-size: 0.82rem; color: var(--text-muted); }
+.lb-wins { font-family: var(--font-display); font-size: 1rem; font-weight: 700; }
+
+/* Recent table */
+.recent-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.recent-table th {
+    text-align: left; padding: 0.5rem 0.75rem;
+    color: var(--text-muted); font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--border);
+}
+.recent-table td {
+    padding: 0.7rem 0.75rem;
+    border-bottom: 1px solid rgba(42,42,61,0.5);
+    vertical-align: middle;
+}
+.recent-table tr:last-child td { border-bottom: none; }
+
+/* Progress bars */
+.progress-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.progress-label { font-size: 0.8rem; width: 60px; color: var(--text-muted); }
+.progress-bar { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+.progress-val { font-size: 0.8rem; font-weight: 600; width: 40px; text-align: right; }
+
+@media (max-width: 768px) {
+    .big-stats { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+{% block body %}
+<div class="page">
+    <div class="dash-title">📊 Dashboard</div>
+    <div style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">
+        All stats for <strong style="color:var(--text)">{{ session.username }}</strong>
+    </div>
+
+    <!-- Big stat row -->
+    <div class="big-stats">
+        <div class="big-stat" data-icon="🎮">
+            <div class="label">Total Games</div>
+            <div class="value">{{ stats.total_games or 0 }}</div>
+            <div class="sub">All-time matches</div>
+        </div>
+        <div class="big-stat" data-icon="🏆">
+            <div class="label">Wins</div>
+            <div class="value text-o">{{ stats.wins or 0 }}</div>
+            <div class="sub">{{ stats.win_rate or 0 }}% win rate</div>
+        </div>
+        <div class="big-stat" data-icon="🔥">
+            <div class="label">Best Streak</div>
+            <div class="value text-accent">{{ stats.max_win_streak or 0 }}</div>
+            <div class="sub">Current: {{ stats.win_streak or 0 }}</div>
+        </div>
+        <div class="big-stat" data-icon="⚡">
+            <div class="label">Fastest Win</div>
+            <div class="value text-x">
+                {% if stats.fastest_win_moves == 999 or not stats.fastest_win_moves %}—
+                {% else %}{{ stats.fastest_win_moves }}m{% endif %}
+            </div>
+            <div class="sub">Fewest moves to win</div>
+        </div>
+    </div>
+
+    <!-- Row 1: Win/Loss chart + Win breakdown donut -->
+    <div class="grid-2" style="gap:1.25rem; margin-bottom:1.25rem;">
+        <div class="chart-card">
+            <div class="section-hdr">Win/Loss Timeline (last 14 days)</div>
+            <div class="chart-wrap" style="height:220px;">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="section-hdr">Results Breakdown</div>
+            <div class="chart-wrap" style="height:220px;">
+                <canvas id="donutChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: PvP vs PvC + Heatmap -->
+    <div class="grid-2" style="gap:1.25rem; margin-bottom:1.25rem;">
+        <div class="chart-card">
+            <div class="section-hdr">PvP vs PvC Breakdown</div>
+            <div class="chart-wrap" style="height:240px;">
+                <canvas id="modeChart"></canvas>
+            </div>
+            <div style="margin-top:1.25rem;">
+                <div class="progress-row">
+                    <span class="progress-label">PvP W</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:{% if stats.total_games %}{{ (stats.pvp_wins / stats.total_games * 100)|int }}{% else %}0{% endif %}%; background:var(--accent3);"></div>
+                    </div>
+                    <span class="progress-val text-o">{{ stats.pvp_wins or 0 }}</span>
+                </div>
+                <div class="progress-row">
+                    <span class="progress-label">PvC W</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:{% if stats.total_games %}{{ (stats.pvc_wins / stats.total_games * 100)|int }}{% else %}0{% endif %}%; background:var(--accent);"></div>
+                    </div>
+                    <span class="progress-val text-accent">{{ stats.pvc_wins or 0 }}</span>
+                </div>
+                <div class="progress-row">
+                    <span class="progress-label">Draws</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:{% if stats.total_games %}{{ (stats.draws / stats.total_games * 100)|int }}{% else %}0{% endif %}%; background:var(--text-muted);"></div>
+                    </div>
+                    <span class="progress-val text-muted">{{ stats.draws or 0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="section-hdr">Move Position Heatmap</div>
+            <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:1rem;">
+                Which cells do you play most?
+            </div>
+            <div class="heatmap-grid" id="heatmapGrid">
+                {% set hm = heatmap %}
+                {% set max_h = hm|max if hm|sum > 0 else 1 %}
+                {% for i in range(9) %}
+                {% set intensity = (hm[i] / max_h) if max_h > 0 else 0 %}
+                {% set r = (106 + (247-106)*intensity)|int %}
+                {% set g = (247 + (106-247)*intensity)|int %}
+                {% set b = (200 + (106-200)*intensity)|int %}
+                <div class="hm-cell"
+                     style="background: rgba({{ r }},{{ g }},{{ b }},{{ 0.1 + intensity*0.7 }});
+                            border: 1px solid rgba({{ r }},{{ g }},{{ b }},{{ 0.2 + intensity*0.5 }});"
+                     title="Position {{ i }}: {{ hm[i] }} moves">
+                    <div class="hm-count">{{ hm[i] }}</div>
+                    <div class="hm-pos">#{{ i }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <div style="margin-top:1rem; font-size:0.75rem; color:var(--text-muted); text-align:center;">
+                Darker = more frequently played
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 3: Leaderboard + Recent games -->
+    <div class="grid-2" style="gap:1.25rem; margin-bottom:1.25rem;">
+        <div class="chart-card">
+            <div class="section-hdr">🏅 Leaderboard</div>
+            {% if leaderboard %}
+                {% for p in leaderboard %}
+                <div class="lb-row">
+                    <div class="lb-rank {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
+                        {{ loop.index }}
+                    </div>
+                    <div class="lb-avatar" style="background:{{ p.avatar_color }}">
+                        {{ p.username[0].upper() }}
+                    </div>
+                    <div class="lb-name">
+                        {{ p.username }}
+                        {% if p.username == session.username %}
+                            <span style="font-size:0.7rem; color:var(--accent);">(you)</span>
+                        {% endif %}
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="lb-wins text-o">{{ p.wins }}W</div>
+                        <div class="lb-stat">{{ p.win_rate }}% wr</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="color:var(--text-muted); text-align:center; padding:2rem 0;">No ranked players yet.</div>
+            {% endif %}
+        </div>
+
+        <div class="chart-card" style="overflow:auto;">
+            <div class="section-hdr">Recent Games</div>
+            <table class="recent-table">
+                <thead>
+                    <tr>
+                        <th>Mode</th>
+                        <th>Opponent</th>
+                        <th>Moves</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in recent %}
+                    <tr>
+                        <td>
+                            <span style="font-size:0.72rem; padding:0.15rem 0.45rem; border-radius:20px;
+                                         background:var(--surface2); border:1px solid var(--border);
+                                         color:var(--text-muted);">
+                                {{ g.game_mode.upper() }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if g.game_mode == 'pvc' %}🤖 AI
+                            {% elif g.player2_name %}{{ g.player2_name }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td style="color:var(--text-muted);">{{ g.moves_count }}</td>
+                        <td>
+                            {% if g.is_draw %}
+                                <span class="badge badge-draw">Draw</span>
+                            {% elif g.winner_id == session.user_id %}
+                                <span class="badge badge-win">Win</span>
+                            {% elif g.ended_at %}
+                                <span class="badge badge-loss">Loss</span>
+                            {% else %}
+                                <span style="color:var(--text-muted); font-size:0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+// Chart defaults
+Chart.defaults.color = '#7a7a99';
+Chart.defaults.borderColor = '#2a2a3d';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+
+// ── Timeline Chart ────────────────────────────────────────────────────────────
+const timelineData = {{ timeline | tojson }};
+const labels = timelineData.map(d => d.date ? d.date.slice(5) : '');
+const winsData = timelineData.map(d => d.wins || 0);
+const lossesData = timelineData.map(d => d.losses || 0);
+const drawsData = timelineData.map(d => d.draws || 0);
+
+new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: {
+        labels,
+        datasets: [
+            {
+                label: 'Wins', data: winsData,
+                borderColor: '#6af7c8', backgroundColor: 'rgba(106,247,200,0.1)',
+                tension: 0.4, fill: true, pointRadius: 4,
+            },
+            {
+                label: 'Losses', data: lossesData,
+                borderColor: '#f76a6a', backgroundColor: 'rgba(247,106,106,0.08)',
+                tension: 0.4, fill: true, pointRadius: 4,
+            },
+            {
+                label: 'Draws', data: drawsData,
+                borderColor: '#7c6af7', backgroundColor: 'rgba(124,106,247,0.08)',
+                tension: 0.4, fill: true, pointRadius: 4,
+            },
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } } },
+        scales: {
+            x: { grid: { color: 'rgba(42,42,61,0.5)' } },
+            y: { grid: { color: 'rgba(42,42,61,0.5)' }, beginAtZero: true, ticks: { stepSize: 1 } }
+        }
+    }
+});
+
+// ── Donut Chart ───────────────────────────────────────────────────────────────
+const wins = {{ stats.wins or 0 }};
+const losses = {{ stats.losses or 0 }};
+const draws = {{ stats.draws or 0 }};
+
+new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Wins', 'Losses', 'Draws'],
+        datasets: [{
+            data: [wins, losses, draws],
+            backgroundColor: ['rgba(106,247,200,0.8)', 'rgba(247,106,106,0.8)', 'rgba(124,106,247,0.8)'],
+            borderColor: ['#6af7c8', '#f76a6a', '#7c6af7'],
+            borderWidth: 2,
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, padding: 16 } },
+        }
+    }
+});
+
+// ── Mode grouped bar ──────────────────────────────────────────────────────────
+new Chart(document.getElementById('modeChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Wins', 'Losses', 'Draws'],
+        datasets: [
+            {
+                label: 'PvP',
+                data: [{{ stats.pvp_wins or 0 }}, {{ stats.pvp_losses or 0 }}, {{ stats.pvp_draws or 0 }}],
+                backgroundColor: 'rgba(124,106,247,0.7)',
+                borderRadius: 6,
+            },
+            {
+                label: 'vs AI',
+                data: [{{ stats.pvc_wins or 0 }}, {{ stats.pvc_losses or 0 }}, {{ stats.pvc_draws or 0 }}],
+                backgroundColor: 'rgba(106,247,200,0.6)',
+                borderRadius: 6,
+            },
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } } },
+        scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: 'rgba(42,42,61,0.5)' }, beginAtZero: true, ticks: { stepSize: 1 } }
+        }
+    }
+});
+{% endblock %}

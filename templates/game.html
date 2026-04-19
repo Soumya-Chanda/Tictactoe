@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}Game #{{ game.id }} — TicTacMaster{% endblock %}
+{% block head %}
+<style>
+.game-review-wrap { max-width: 700px; margin: auto; padding: 2rem; }
+.game-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.board-static {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 280px;
+    margin: 1.5rem auto;
+}
+.cell-static {
+    width: 85px; height: 85px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 2.2rem; font-weight: 800;
+}
+.cell-static.X { color: var(--x-color); border-color: rgba(247,106,106,0.3); }
+.cell-static.O { color: var(--o-color); border-color: rgba(106,247,200,0.3); }
+.cell-static.winning {
+    background: rgba(247,198,106,0.1);
+    border-color: var(--gold);
+}
+.move-log {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    margin-top: 1rem;
+}
+.move-chip {
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.78rem; font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+}
+</style>
+{% endblock %}
+{% block body %}
+<div class="game-review-wrap">
+    <div style="margin-bottom:1rem;">
+        <a href="{{ url_for('home') }}" class="btn btn-secondary">← Back to Home</a>
+    </div>
+
+    <div class="game-header">
+        <div style="font-family:var(--font-display); font-size:1.3rem; font-weight:800; margin-bottom:0.75rem;">
+            Game #{{ game.id }} Review
+        </div>
+        <div class="grid-2">
+            <div>
+                <div class="text-muted" style="font-size:0.78rem;">Mode</div>
+                <div style="font-weight:600;">{{ game.game_mode.upper() }}</div>
+            </div>
+            <div>
+                <div class="text-muted" style="font-size:0.78rem;">Total Moves</div>
+                <div style="font-weight:600;">{{ game.moves_count }}</div>
+            </div>
+            <div>
+                <div class="text-muted" style="font-size:0.78rem;">Result</div>
+                <div style="font-weight:600;">
+                    {% if game.is_draw %}
+                        <span class="badge badge-draw">Draw</span>
+                    {% elif game.winner_id %}
+                        Winner decided
+                    {% else %}
+                        Incomplete
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="text-muted" style="font-size:0.78rem;">Duration</div>
+                <div style="font-weight:600;">{{ game.duration_seconds }}s</div>
+            </div>
+        </div>
+    </div>
+
+    {% if game.board_state %}
+    <div class="card" style="text-align:center;">
+        <div style="font-family:var(--font-display); font-size:0.9rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em;">
+            Final Board State
+        </div>
+        <div class="board-static">
+            {% set cells = game.board_state.split(',') %}
+            {% for cell in cells %}
+            <div class="cell-static {% if cell != 'None' %}{{ cell }}{% endif %}">
+                {% if cell == 'X' %}✕{% elif cell == 'O' %}○{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('play') }}" class="btn btn-primary" style="margin-top:1rem;">
+            ▶ Play Again
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
