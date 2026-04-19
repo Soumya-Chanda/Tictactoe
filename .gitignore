@@ -1,0 +1,12 @@
+# .gitignore
+__pycache__/
+*.pyc
+*.pyo
+database/tictactoe.db
+*.db
+.env
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
